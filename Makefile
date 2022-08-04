@@ -1,10 +1,10 @@
 build:
-	cargo build
+	@cargo build -q
 
 test: build
-	./test.sh
+	@./test.sh
 
 clean:
-	cargo clean
+	@cargo clean
 
 .PHONY: build test clean

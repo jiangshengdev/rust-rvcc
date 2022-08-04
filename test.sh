@@ -5,7 +5,7 @@ assert() {
   input="$2"
 
   mkdir dist >/dev/null 2>&1
-  cargo run -- "$input" >./dist/output.s || exit
+  cargo run -q -- "$input" >./dist/output.s || exit
   riscv64-unknown-elf-gcc -static -o ./dist/output ./dist/output.s
   spike --isa=rv64gc pk ./dist/output
 
@@ -21,5 +21,9 @@ assert() {
 
 assert 0 0
 assert 42 42
+
+assert 34 '12-34+56'
+
+assert 41 ' 12 + 34 - 5 '
 
 echo OK
