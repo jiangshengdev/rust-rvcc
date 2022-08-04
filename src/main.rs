@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::LinkedList;
 use std::env;
 use std::ops::Range;
@@ -13,8 +14,42 @@ enum TokenKind {
 struct Token {
     kind: TokenKind,
     value: String,
-    _location: Range<usize>,
+    location: Range<usize>,
     _len: usize,
+}
+
+thread_local! {
+    static CURRENT_INPUT: RefCell<String> = RefCell::new(String::new())
+}
+
+#[macro_export]
+macro_rules! error_at {
+    ($location: ident, $($arg:tt)*) => {
+        $crate::error_at($location, ($location+1), format!($($arg)*));
+    };
+}
+
+#[macro_export]
+macro_rules! error_token {
+    ($token: ident, $($arg:tt)*) => {
+        $crate::error_token($token, format!($($arg)*));
+    };
+}
+
+fn error_token(token: &Token, message: String) {
+    error_at(token.location.start, token.location.end, message);
+}
+
+fn error_at(start: usize, end: usize, message: String) {
+    let mut current_input = String::new();
+    CURRENT_INPUT.with(|text| current_input = text.borrow().to_string());
+    println!("{}", current_input);
+
+    let padding_left = (0..start).map(|_| " ").collect::<String>();
+    let error_pointer = (start..end).map(|_| "^").collect::<String>();
+    println!("{}{} {}", padding_left, error_pointer, message);
+
+    panic!();
 }
 
 impl Token {
@@ -22,13 +57,16 @@ impl Token {
         Token {
             kind,
             value,
-            _location: Range { start, end },
+            location: Range { start, end },
             _len: end - start,
         }
     }
 }
 
 fn tokenize(code: String) -> LinkedList<Token> {
+    CURRENT_INPUT.with(|text| {
+        *text.borrow_mut() = code.clone();
+    });
     let mut positions = code.char_indices();
     let mut list = LinkedList::new();
     let mut current = positions.next();
@@ -46,8 +84,8 @@ fn tokenize(code: String) -> LinkedList<Token> {
 
             while let Some((_i, c)) = current {
                 if c.is_ascii_digit() {
-                    end += 1;
                     number.push(c);
+                    end += 1;
 
                     current = positions.next();
                     continue;
@@ -72,7 +110,7 @@ fn tokenize(code: String) -> LinkedList<Token> {
             continue;
         }
 
-        panic!("invalid token: {}", c);
+        error_at!(i, "invalid character: {}", c);
     }
 
     let len = code.len();
@@ -84,7 +122,7 @@ fn tokenize(code: String) -> LinkedList<Token> {
 
 fn get_number(token: &Token) -> &String {
     if token.kind != TokenKind::Number {
-        panic!("expect a number");
+        error_token!(token, "expect a number");
     }
 
     &token.value
@@ -132,7 +170,7 @@ fn main() {
             continue;
         }
 
-        panic!("invalid token: {:?}", token)
+        error_token!(token, "invalid token: {:?}", token);
     }
 
     println!("  ret");

@@ -5,7 +5,7 @@ assert() {
   input="$2"
 
   mkdir dist >/dev/null 2>&1
-  cargo run -q -- "$input" >./dist/output.s || exit
+  ./target/debug/rust-rvcc "$input" >./dist/output.s || exit
   riscv64-unknown-elf-gcc -static -o ./dist/output ./dist/output.s
   spike --isa=rv64gc pk ./dist/output
 
